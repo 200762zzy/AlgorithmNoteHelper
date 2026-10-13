@@ -175,6 +175,10 @@ Obsidian + Dataview"：固定字段带来的低录入成本，加上单文件互
 - 快速新建是**应用内**快捷键，不是系统级全局热键
 - 不支持把外部编辑过的 md 回读进应用（见上面的"单一写入者"说明）
 - 数据目录位置由程序自动决定，界面里不能改（可用 `ANH_DATA_DIR` 覆盖）
+- **打包体积 119.6 MB**。模块级 `--exclude-module` 只排掉 Python 侧的模块，**排不掉底层的 Qt DLL**：
+  `Qt6Quick.dll`、`Qt6Qml.dll`、`libcrypto-3*.dll`、`opengl32sw.dll` 仍会被 PySide6 的 hook 收进包里，
+  合计约 35 MB。继续瘦身要在 spec 里过滤 binaries，那属于手工删 DLL，而非交互自检无法覆盖
+  「文件对话框、样式」等全部运行时路径，所以本期刻意没做
 
 ## 目录结构
 

@@ -23,6 +23,13 @@
     NOTE: keep this file ASCII-only. Windows PowerShell 5.1 reads .ps1 files as ANSI
     unless they begin with a UTF-8 BOM, so non-ASCII text here can break parsing.
 
+    NOTE ON SIZE: module-level --exclude-module only drops the Python-side modules. It does
+    NOT remove the underlying Qt DLLs: Qt6Quick.dll, Qt6Qml.dll, libcrypto-3*.dll and
+    opengl32sw.dll still end up in the bundle (~35 MB together) because PySide6's
+    PyInstaller hook collects them. Slimming further means filtering binaries in a spec
+    file, i.e. hand-deleting DLLs -- and the two non-interactive self-checks cannot cover
+    every runtime path that might need them (file dialogs, styles). Not done on purpose.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tools/build.ps1
     powershell -ExecutionPolicy Bypass -File tools/build.ps1 -Python 'C:\Python312\python.exe'
