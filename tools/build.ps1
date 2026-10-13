@@ -34,17 +34,19 @@
     powershell -ExecutionPolicy Bypass -File tools/build.ps1
     powershell -ExecutionPolicy Bypass -File tools/build.ps1 -Python 'C:\Python312\python.exe'
     powershell -ExecutionPolicy Bypass -File tools/build.ps1 -Force
+    powershell -ExecutionPolicy Bypass -File tools/build.ps1 -DistPath dist-v0.1.1
 #>
 [CmdletBinding()]
 param(
     [string]$Python = 'python',
+    [string]$DistPath = 'dist',
     [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $name = 'AlgorithmNoteHelper'
-$dist = Join-Path $root "dist\$name"
+$dist = Join-Path (Join-Path $root $DistPath) $name
 
 # Guard: a rebuild wipes the output folder, and the portable data folder sits inside it.
 $existingIndex = Join-Path $dist 'data\index.json'
@@ -85,7 +87,8 @@ try {
         '-m', 'PyInstaller',
         '--noconfirm', '--clean',
         '--onedir', '--windowed',
-        '--name', $name
+        '--name', $name,
+        '--distpath', (Join-Path $root $DistPath)
     )
     foreach ($module in $excludes) {
         $arguments += @('--exclude-module', $module)
@@ -96,7 +99,7 @@ try {
     & $Python @arguments
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE" }
 
-    $dist = Join-Path $root "dist\$name"
+    $dist = Join-Path (Join-Path $root $DistPath) $name
     Copy-Item (Join-Path $root 'README.md') $dist -Force
     Copy-Item (Join-Path $root 'FIRST_RUN.md') $dist -Force
     $exe = Join-Path $dist "$name.exe"

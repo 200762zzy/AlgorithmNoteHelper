@@ -277,15 +277,28 @@ def test_gui_self_check_constructs_the_window(monkeypatch, tmp_path, qapp):
     """界面自检要能证明「Qt 平台插件 + 整个界面层」在打包环境下也能加载。
 
     这是 `--self-check` 覆盖不到的部分（它不创建 QApplication），
-    也是 PyInstaller 最常出问题的地方。
+    也是 PyInstaller 最常出问题的地方。它还必须是**只读**的：不能写数据、
+    也不能建临时目录（`tempfile` 在系统临时目录不可写时会回退到当前工作目录，
+    从而到处留垃圾目录）。
     """
     import main
+    import paths
+    from services import Library
 
-    monkeypatch.setenv("ANH_DATA_DIR", str(tmp_path / "data"))
+    data_dir = tmp_path / "data"
+    monkeypatch.setenv("ANH_DATA_DIR", str(data_dir))
+    Library(paths.ensure_layout(data_dir), today_fn=lambda: DAY).create("自检样例")
+
+    before = sorted(p.name for p in data_dir.iterdir())
     assert main.main(["--self-check-gui"]) == 0
 
-    log = tmp_path / "data" / "gui-check.log"
+    log = data_dir / "gui-check.log"
     assert log.exists()
     text = log.read_text(encoding="utf-8")
     assert "界面自检通过" in text
     assert "列表条数：1" in text
+
+    # 只读：除了自检日志之外不应该多出任何东西（更不应该出现临时目录）
+    after = sorted(p.name for p in data_dir.iterdir() if p.name != "gui-check.log")
+    assert after == before
+    assert not list(tmp_path.glob("anh-guicheck-*"))

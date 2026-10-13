@@ -37,7 +37,7 @@ LEFT_DEFAULT_WIDTH = 340
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, library: Library, parent=None):
+    def __init__(self, library: Library, parent=None, report_consistency: bool = True):
         super().__init__(parent)
         self.library = library
         self._refreshing = False
@@ -53,7 +53,9 @@ class MainWindow(QMainWindow):
 
         self._update_window_title()
         self._refresh()
-        self._report_consistency()
+        # 启动一致性检查用的是模态对话框；无人值守的自检要把它关掉，否则会挂住
+        if report_consistency:
+            self._report_consistency()
 
     # -- 构建 ------------------------------------------------------------
 

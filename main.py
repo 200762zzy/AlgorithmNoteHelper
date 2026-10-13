@@ -12,8 +12,6 @@
 from __future__ import annotations
 
 import sys
-import tempfile
-from pathlib import Path
 
 from PySide6.QtCore import QLockFile
 from PySide6.QtWidgets import QApplication, QMessageBox
@@ -64,8 +62,9 @@ def gui_check() -> int:
     Qt 平台插件有没有被正确打进去。这里创建 QApplication（这一步就会加载平台插件）
     并装配整个界面层，跑完立刻退出——屏幕上不会闪任何窗口。
 
-    界面用**临时数据目录**装配：万一真实数据存在不一致，主窗口启动时的一致性
-    对话框是模态的，会把无人值守的自检挂住。
+    实现约束：**只以只读方式打开真实数据目录，不写任何文件、不建临时目录。**
+    早先的实现会用 `mkdtemp` 造一条样例数据，而系统临时目录不可写时 `tempfile`
+    会静默回退到当前工作目录，结果在仓库根留下一堆 `anh-guicheck-*` 垃圾目录。
     """
     try:
         data_dir = paths.resolve_data_dir()
@@ -73,7 +72,11 @@ def gui_check() -> int:
         _emit([f"[界面自检失败] {exc}"], None)
         return 2
 
-    log_path = paths.ensure_layout(data_dir).root / "gui-check.log"
+    layout = paths.ensure_layout(data_dir)
+    log_path = layout.root / "gui-check.log"
+    library = Library(layout)
+    expected_rows = len(library.entries)
+
     try:
         app = QApplication.instance() or QApplication(sys.argv)
         apply_theme(app)
@@ -81,17 +84,13 @@ def gui_check() -> int:
         _emit([f"[界面自检失败] 无法初始化 Qt：{exc!r}"], log_path)
         return 3
 
-    scratch = Path(tempfile.mkdtemp(prefix="anh-guicheck-")) / "data"
-    library = Library(paths.ensure_layout(scratch))
-    library.create("界面自检用条目")
-
     try:
-        window = MainWindow(library)
+        window = MainWindow(library, report_consistency=False)
         window.resize(1200, 800)
         pixmap = window.grab()
         rows = window.panel.list.count()
-        if rows != 1:
-            raise AssertionError(f"列表应有 1 条，实际 {rows} 条")
+        if rows != expected_rows:
+            raise AssertionError(f"列表应有 {expected_rows} 条，实际 {rows} 条")
         lines = [
             f"AlgorithmNoteHelper {APP_VERSION} 界面自检",
             f"运行方式：{'打包后的 exe' if getattr(sys, 'frozen', False) else '源码'}",
