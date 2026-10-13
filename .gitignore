@@ -14,3 +14,6 @@ dist/
 
 # 开发用截图（tools/shoot.py 的输出）
 .shots/
+
+# 重建 dist 前导出的用户数据备份
+.data-backup-*/
