@@ -182,3 +182,24 @@ def test_entry_point_module_is_importable():
     import main
 
     assert callable(main.main)
+
+
+def test_single_instance_lock_refuses_a_second_holder(layout):
+    """单实例锁是防丢数据的（双开退出时会互相覆盖索引），所以验证真实行为。
+
+    QLockFile 会记录持有者的 pid/host，并依据 `staleLockTime` 判断锁是否还有效，
+    因此同一进程内第二次 tryLock 也必须失败。
+    """
+    from PySide6.QtCore import QLockFile
+
+    first = QLockFile(str(layout.lock))
+    first.setStaleLockTime(30_000)
+    assert first.tryLock(200) is True
+
+    second = QLockFile(str(layout.lock))
+    second.setStaleLockTime(30_000)
+    assert second.tryLock(200) is False
+
+    first.unlock()
+    assert second.tryLock(200) is True
+    second.unlock()
