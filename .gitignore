@@ -10,6 +10,7 @@ data/
 # 打包产物
 build/
 dist/
+dist-*/
 *.spec
 
 # 开发用截图（tools/shoot.py 的输出）
