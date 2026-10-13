@@ -178,6 +178,77 @@ def _second_line(window, entry_id):
     raise AssertionError(f"列表里找不到 {entry_id}")
 
 
+# --- 复习计划视图 -----------------------------------------------------------
+
+
+def test_schedule_dialog_groups_the_review_cycle(window, day):
+    """复习计划要按到期日分组，并把今天／明天标出来。"""
+    from ui.schedule_dialog import ScheduleDialog
+
+    entry = window.library.entries[0]
+    window.library.review(entry.id, 3)  # 排到明天
+
+    dialog = ScheduleDialog(window.library, day=day, parent=window)
+    labels = [
+        dialog.tree.topLevelItem(index).text(0)
+        for index in range(dialog.tree.topLevelItemCount())
+    ]
+    assert any("今天" in label for label in labels)
+    assert any("明天" in label for label in labels)
+
+    bars = dialog.chart.bars()
+    assert bars[0][0] == "逾期"
+    assert bars[1][0] == "今天" and bars[1][1] == 1
+    assert bars[2][0] == "明天" and bars[2][1] == 1
+    assert dialog.chosen_entry_id() is None
+    dialog.close()
+
+
+def test_schedule_dialog_double_click_returns_the_entry(window, day):
+    from ui.schedule_dialog import ScheduleDialog
+
+    entry = window.library.entries[0]
+    dialog = ScheduleDialog(window.library, day=day, parent=window)
+
+    bucket = dialog.tree.topLevelItem(0)
+    child = bucket.child(0)
+    dialog._on_activated(child, 0)  # 模拟双击
+
+    assert dialog.chosen_entry_id() == entry.id
+    dialog.close()
+
+
+def test_code_boxes_get_enough_room_and_can_be_zoomed(window):
+    """代码框必须够高、能随窗口伸展、且不被折行；并配有「放大」按钮。
+
+    上一版把所有文本框设成定高 140px，40 行的 AC 代码只能看到 7 行。
+    """
+    from PySide6.QtWidgets import QPlainTextEdit, QPushButton, QSizePolicy
+
+    editor = window.editor.ac_code_edit
+    assert editor.minimumHeight() >= 180
+    assert editor.sizePolicy().verticalPolicy() == QSizePolicy.Expanding
+    assert editor.lineWrapMode() == QPlainTextEdit.NoWrap
+    assert window.editor.wrong_code_edit.minimumHeight() >= 180
+
+    # 两个代码框各配一个「放大」按钮
+    buttons = [button.text() for button in window.findChildren(QPushButton)]
+    assert buttons.count("放大") == 2
+
+
+def test_code_dialog_returns_edited_text(qapp):
+    from ui.code_dialog import CodeDialog
+
+    dialog = CodeDialog("int main() {}", "AC 代码（C++）")
+    assert dialog.text() == "int main() {}"
+    assert "放大查看" in dialog.windowTitle()
+
+    dialog.editor.setPlainText("// 改过了\nreturn 0;")
+    assert dialog.text() == "// 改过了\nreturn 0;"
+    assert "2 行" in dialog.info.text()
+    dialog.close()
+
+
 # --- 对话框的纯逻辑 ---------------------------------------------------------
 
 

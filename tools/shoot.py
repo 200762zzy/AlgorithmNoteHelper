@@ -35,9 +35,10 @@ import paths  # noqa: E402
 from models import Difficulty, ErrorCategory, Note  # noqa: E402
 from services import Library  # noqa: E402
 from ui.main_window import MainWindow  # noqa: E402
+from ui.schedule_dialog import ScheduleDialog  # noqa: E402
 from ui.theme import apply_theme  # noqa: E402
 
-SIZES = ((1200, 800), (900, 680))
+SIZES = ((1200, 800), (900, 680), (1360, 900))
 
 FIXED_DAY = date(2026, 10, 13)
 
@@ -150,6 +151,17 @@ def main() -> int:
         window.grab().save(str(target))
         saved.append(target)
         print(f"saved {target}")
+
+    # 复习计划视图（到期分布 + 分组清单）
+    dialog = ScheduleDialog(library, day=FIXED_DAY, parent=window)
+    dialog.resize(880, 640)
+    dialog.show()
+    app.processEvents()
+    target = out_dir / "schedule.png"
+    dialog.grab().save(str(target))
+    saved.append(target)
+    print(f"saved {target}")
+    dialog.close()
 
     print(f"数据目录（临时）：{data_dir}")
     return 0 if saved else 1

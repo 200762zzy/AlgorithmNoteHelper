@@ -20,12 +20,14 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 import ui.theme as theme
 from models import Difficulty, ErrorCategory, Note, ReviewStatus
+from ui.code_dialog import CodeDialog
 
 MODE_EMPTY = "empty"
 MODE_NEW = "new"
@@ -195,22 +197,22 @@ class EntryEditor(QWidget):
         body.setSpacing(5)
 
         self.wrong_idea_edit = self._add_text_block(
-            body, "我的错误思路", "当时是怎么想的、错在哪一步", mono=False, height=64
+            body, "我的错误思路", "当时是怎么想的、错在哪一步", mono=False, height=80
         )
         self.wrong_code_edit = self._add_text_block(
-            body, "错误代码（C++）", "// 错误代码", mono=True, height=140
+            body, "错误代码（C++）", "// 错误代码", mono=True, height=200
         )
         self.cause_detail_edit = self._add_text_block(
-            body, "错因详述", "如：边界错误 —— 数组开到 n 而非 n+1", mono=False, height=64
+            body, "错因详述", "如：边界错误 —— 数组开到 n 而非 n+1", mono=False, height=80
         )
         self.correct_idea_edit = self._add_text_block(
-            body, "正确思路", "关键观察、状态定义、转移方程等", mono=False, height=76
+            body, "正确思路", "关键观察、状态定义、转移方程等", mono=False, height=88
         )
         self.ac_code_edit = self._add_text_block(
-            body, "AC 代码（C++）", "// 正确代码", mono=True, height=140
+            body, "AC 代码（C++）", "// 正确代码", mono=True, height=200
         )
         self.summary_edit = self._add_text_block(
-            body, "复盘总结", "这类题的通用套路、下次如何避免", mono=False, height=64
+            body, "复盘总结", "这类题的通用套路、下次如何避免", mono=False, height=80
         )
         layout.addWidget(body_box)
 
@@ -236,7 +238,7 @@ class EntryEditor(QWidget):
         review.addWidget(self.review_button)
         layout.addWidget(review_box)
 
-        layout.addStretch(1)
+        # 不再加尾部 stretch：多余空间应当给 Expanding 的代码框，而不是留白
 
         # 脏标记
         self.title_edit.textChanged.connect(self._on_edited)
@@ -248,17 +250,45 @@ class EntryEditor(QWidget):
         for editor in self._text_editors():
             editor.textChanged.connect(self._on_edited)
 
-    def _add_text_block(self, parent_layout, label: str, placeholder: str, *, mono: bool, height: int):
-        parent_layout.addWidget(QLabel(label))
+    def _add_text_block(
+        self, parent_layout, label: str, placeholder: str, *, mono: bool, height: int
+    ):
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(6)
+        header.addWidget(QLabel(label))
+        header.addStretch(1)
+
         editor = QPlainTextEdit()
         editor.setPlaceholderText(placeholder)
-        # 用定高而不是最小高度：QPlainTextEdit 默认纵向 Expanding，若只设最小高度，
-        # 剩余空间会被最上面那个文本框全部吸走，表单看起来头重脚轻。
-        editor.setFixedHeight(height)
+
         if mono:
+            # 代码是这个工具里最需要通读的内容，所以给它两样东西：
+            # 1) 足够的最小高度 + 纵向 Expanding —— 窗口变高时多余空间全给代码框；
+            # 2) 不折行 —— 长行用横向滚动条看，折行反而更难读。
             editor.setFont(theme.mono_font(10))
+            editor.setLineWrapMode(QPlainTextEdit.NoWrap)
+            editor.setMinimumHeight(height)
+            editor.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+            zoom = QPushButton("放大")
+            zoom.setToolTip("用接近全屏的窗口查看／编辑这段代码")
+            zoom.clicked.connect(lambda _=False, box=editor, name=label: self._zoom(box, name))
+            header.addWidget(zoom)
+        else:
+            # 散文框定高：QPlainTextEdit 默认纵向 Expanding，若只设最小高度，
+            # 剩余空间会被最上面那个框独吞，表单看起来头重脚轻。
+            editor.setFixedHeight(height)
+
+        parent_layout.addLayout(header)
         parent_layout.addWidget(editor)
         return editor
+
+    def _zoom(self, editor: QPlainTextEdit, title: str) -> None:
+        updated = CodeDialog.edit(self, editor.toPlainText(), title)
+        if updated is None or updated == editor.toPlainText():
+            return
+        # setPlainText 会触发 textChanged，脏标记由 _on_edited 统一处理
+        editor.setPlainText(updated)
 
     def _text_editors(self) -> tuple[QPlainTextEdit, ...]:
         return (

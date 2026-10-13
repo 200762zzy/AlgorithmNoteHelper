@@ -176,6 +176,71 @@ def test_due_today_filter_sorts_by_next_review(library, day):
     assert [e.id for e in result] == [stale.id, recent.id]
 
 
+# --- 复习计划：到期分布（schedule） -----------------------------------------
+
+
+def test_schedule_buckets_entries_by_next_review(library, day):
+    today = library.create("今天到期")
+    tomorrow = library.create("明天到期")
+    library.review(tomorrow.id, 3, day)  # next_review = day + 1
+
+    plan = library.schedule(day=day, horizon_days=7)
+
+    assert [e.id for e in plan.by_day[day]] == [today.id]
+    assert [e.id for e in plan.by_day[day + timedelta(days=1)]] == [tomorrow.id]
+    assert plan.overdue == []
+    assert plan.later == []
+    assert plan.total == 2
+
+
+def test_schedule_puts_past_dates_into_overdue(library, day):
+    stale = library.create("逾期了")
+    library.review(stale.id, 3, day - timedelta(days=5))  # next_review = day - 4
+
+    plan = library.schedule(day=day, horizon_days=7)
+
+    assert [e.id for e in plan.overdue] == [stale.id]
+    assert all(not bucket for bucket in plan.by_day.values())
+    assert plan.total == 1
+
+
+def test_schedule_puts_far_future_into_later(library, day):
+    far = library.create("很久以后")
+    library.review(far.id, 3, day)
+    for _ in range(3):
+        library.review(far.id, 5, day)  # 间隔被拉到 34 天
+
+    plan = library.schedule(day=day, horizon_days=7)
+
+    assert [e.id for e in plan.later] == [far.id]
+    assert plan.overdue == []
+    assert all(not bucket for bucket in plan.by_day.values())
+
+
+def test_schedule_keeps_mastered_entries_in_the_cycle(library, day):
+    """已掌握不是终点，所以它仍应出现在复习循环里。"""
+    entry = library.create("已掌握")
+    for _ in range(4):
+        library.review(entry.id, 5, day)
+    assert entry.review_status is ReviewStatus.MASTERED
+
+    plan = library.schedule(day=day, horizon_days=60)
+
+    assert entry.id in {e.id for bucket in plan.by_day.values() for e in bucket}
+
+
+def test_schedule_buckets_are_sorted_by_next_review(library, day):
+    """同一格里逾期越久的排越前。"""
+    stale = library.create("更早")
+    library.review(stale.id, 3, day - timedelta(days=9))  # next = day - 8
+    recent = library.create("稍早")
+    library.review(recent.id, 3, day - timedelta(days=2))  # next = day - 1
+
+    plan = library.schedule(day=day, horizon_days=7)
+
+    assert [e.id for e in plan.overdue] == [stale.id, recent.id]
+
+
 def test_filters_combine(library):
     target = library.create(
         "目标", tags=["DP"], difficulty=Difficulty.HARD, error_category=ErrorCategory.OVERFLOW

@@ -161,6 +161,20 @@ class EntryListPanel(QWidget):
         self.list.blockSignals(False)
         self._loading = False
 
+    def clear_filters(self) -> None:
+        """把所有筛选条件复位，但**不**触发刷新（由调用方决定何时刷新）。
+
+        从「复习计划」跳到某一条时必须先做这件事：目标条目可能被关键词、标签或
+        状态筛选挡在外面。
+        """
+        self._loading = True
+        try:
+            self.keyword.clear()
+            for combo in (self.tag, self.difficulty, self.status):
+                combo.setCurrentIndex(0)
+        finally:
+            self._loading = False
+
     # -- 内部 ------------------------------------------------------------
 
     def _emit_filters(self, *_args) -> None:

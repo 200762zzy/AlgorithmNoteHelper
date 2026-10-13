@@ -30,6 +30,7 @@ from ui.entry_list import EntryListPanel
 from ui.import_dialog import ImportDialog
 from ui.quick_add import QuickAddDialog
 from ui.review_dialog import ReviewDialog
+from ui.schedule_dialog import ScheduleDialog
 
 QUALITY_LABELS = {1: "忘记", 3: "困难", 5: "轻松"}
 
@@ -79,6 +80,12 @@ class MainWindow(QMainWindow):
         self.action_save.setShortcut(QKeySequence.StandardKey.Save)
         self.action_save.setToolTip("保存当前错题（Ctrl+S）")
         bar.addAction(self.action_save)
+
+        self.action_schedule = QAction("复习计划", self)
+        self.action_schedule.setToolTip(
+            "按到期日看整个复习循环：未来两周的到期分布 + 分组清单，双击可直接跳过去"
+        )
+        bar.addAction(self.action_schedule)
 
         bar.addSeparator()
 
@@ -147,6 +154,7 @@ class MainWindow(QMainWindow):
         self.action_new.triggered.connect(self._on_new)
         self.action_quick.triggered.connect(self._on_quick_add)
         self.action_save.triggered.connect(lambda: self._save())
+        self.action_schedule.triggered.connect(self._on_schedule)
         self.action_export_md.triggered.connect(self._on_export_md)
         self.action_export_snapshot.triggered.connect(self._on_export_snapshot)
         self.action_import_snapshot.triggered.connect(self._on_import_snapshot)
@@ -407,6 +415,22 @@ class MainWindow(QMainWindow):
 
     def _on_open_data_dir(self) -> None:
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.library.layout.root)))
+
+    def _on_schedule(self) -> None:
+        """复习计划：看整个复习循环，双击某条跳过去。"""
+        if not self._guard_dirty():
+            return
+        dialog = ScheduleDialog(self.library, parent=self)
+        if dialog.exec() != QDialog.Accepted:
+            return
+        chosen = dialog.chosen_entry_id()
+        entry = None if chosen is None else self.library.find(chosen)
+        if entry is None:
+            return
+        # 目标可能被当前筛选挡住（比如它下次排在几天后），先复位筛选再选中
+        self.panel.clear_filters()
+        self._refresh(select_id=entry.id)
+        self._status(f"已定位到「{entry.title}」，下次复习 {entry.srs.next_review}")
 
     # -- 启动自检与收尾 --------------------------------------------------
 

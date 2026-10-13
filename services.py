@@ -69,6 +69,19 @@ class ImportResult:
         return "；".join(parts)
 
 
+@dataclass(frozen=True)
+class Schedule:
+    """复习循环的到期分布（见 `Library.schedule`）。"""
+
+    overdue: list[MistakeEntry]
+    by_day: dict[date, list[MistakeEntry]]
+    later: list[MistakeEntry]
+
+    @property
+    def total(self) -> int:
+        return len(self.overdue) + sum(len(v) for v in self.by_day.values()) + len(self.later)
+
+
 class Library:
     """一个数据目录上的错题库门面。"""
 
@@ -135,6 +148,39 @@ class Library:
         result = [entry for entry in self._entries if self.in_review_queue(entry, day)]
         result.sort(key=lambda e: (e.srs.next_review, e.created_at, e.title))
         return result
+
+    def schedule(self, day: date | None = None, horizon_days: int = 14) -> Schedule:
+        """按到期日把全部条目分组，供「复习计划」视图使用。
+
+        这里**纯粹按 `srs.next_review` 分组**，不判断是否已进入队列：它要展示的是
+        **复习循环本身**（哪一天该回来看哪几道），而不是"此刻该做什么"。
+        "此刻是否已到期"由 `in_review_queue()` 单独标出，界面据此加标记。
+
+        注意已掌握的条目也在其中——它们不是终点，只是间隔被拉长了。
+        """
+        target = self._day(day)
+        by_day: dict[date, list[MistakeEntry]] = {
+            target + timedelta(days=offset): [] for offset in range(max(1, horizon_days))
+        }
+        horizon_end = max(by_day)
+
+        overdue: list[MistakeEntry] = []
+        later: list[MistakeEntry] = []
+        for entry in self._entries:
+            when = entry.srs.next_review
+            if when < target:
+                overdue.append(entry)
+            elif when <= horizon_end:
+                by_day[when].append(entry)
+            else:
+                later.append(entry)
+
+        key = lambda e: (e.srs.next_review, e.created_at, e.title)  # noqa: E731
+        overdue.sort(key=key)
+        later.sort(key=key)
+        for bucket in by_day.values():
+            bucket.sort(key=key)
+        return Schedule(overdue=overdue, by_day=by_day, later=later)
 
     def search(
         self,
