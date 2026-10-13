@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 运行时数据（用户错题数据不入库）
+data/
+
+# 打包产物
+build/
+dist/
+*.spec
