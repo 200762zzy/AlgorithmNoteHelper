@@ -19,7 +19,6 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6.QtWidgets", reason="未安装 PySide6")
 
 from PySide6.QtCore import Qt  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from models import Difficulty, Note, StatusFilter  # noqa: E402
 from services import Library  # noqa: E402
@@ -28,12 +27,6 @@ from ui.quick_add import derive_title, interpret_clipboard  # noqa: E402
 from ui.review_dialog import QUALITY_CHOICES  # noqa: E402
 
 DAY = date(2026, 10, 13)
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    application = QApplication.instance() or QApplication([])
-    yield application
 
 
 @pytest.fixture
@@ -234,6 +227,18 @@ def test_code_boxes_get_enough_room_and_can_be_zoomed(window):
     # 两个代码框各配一个「放大」按钮
     buttons = [button.text() for button in window.findChildren(QPushButton)]
     assert buttons.count("放大") == 2
+
+
+def test_code_editors_and_the_zoom_dialog_carry_the_cpp_highlighter(window):
+    """高亮必须真的挂上去 —— 只 import 了模块但没 attach 是最容易犯的错。"""
+    from ui.code_dialog import CodeDialog
+
+    assert window.editor.ac_code_edit.cpp_highlighter is not None
+    assert window.editor.wrong_code_edit.cpp_highlighter is not None
+
+    dialog = CodeDialog("int main() { return 0; }", "AC 代码（C++）")
+    assert dialog.editor.cpp_highlighter is not None
+    dialog.close()
 
 
 def test_code_dialog_returns_edited_text(qapp):

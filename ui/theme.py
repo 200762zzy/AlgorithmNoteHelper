@@ -30,6 +30,18 @@ MONO_FONT_FAMILIES = [
     "monospace",
 ]
 
+# 代码高亮的语义配色。刻意低饱和：文档 3.5 的"克制"针对的是界面装饰，而代码语义
+# 天生需要几种颜色来区分——所以取低饱和的中性色，避免和界面本身抢注意力。
+CODE_COLORS = {
+    "comment": {"color": "#8a9199", "italic": True},
+    "keyword": {"color": "#0f6b9a", "bold": True},
+    "type": {"color": "#7a4fa3"},
+    "function": {"color": "#2c6eb5"},
+    "number": {"color": "#b0603a"},
+    "string": {"color": "#2f7a4f"},
+    "preprocessor": {"color": "#8a6a2f"},
+}
+
 STYLESHEET = f"""
 QWidget {{
     background-color: #f2f3f5;

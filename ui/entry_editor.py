@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 import ui.theme as theme
 from models import Difficulty, ErrorCategory, Note, ReviewStatus
 from ui.code_dialog import CodeDialog
+from ui.highlighter import attach as attach_cpp_highlighter
 
 MODE_EMPTY = "empty"
 MODE_NEW = "new"
@@ -270,6 +271,7 @@ class EntryEditor(QWidget):
             editor.setLineWrapMode(QPlainTextEdit.NoWrap)
             editor.setMinimumHeight(height)
             editor.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+            attach_cpp_highlighter(editor)
             zoom = QPushButton("放大")
             zoom.setToolTip("用接近全屏的窗口查看／编辑这段代码")
             zoom.clicked.connect(lambda _=False, box=editor, name=label: self._zoom(box, name))

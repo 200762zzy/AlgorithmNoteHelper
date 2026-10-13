@@ -59,3 +59,16 @@ def layout(tmp_path: Path) -> paths.DataLayout:
 @pytest.fixture
 def library(layout: paths.DataLayout, day: date) -> Library:
     return Library(layout, today_fn=lambda: day)
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    """整个测试会话共用一个 QApplication（Qt 不允许创建多个实例）。
+
+    只在被请求时才创建，并且先把平台设为 offscreen —— 测试不应该弹出任何窗口。
+    """
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    application = QApplication.instance() or QApplication([])
+    yield application

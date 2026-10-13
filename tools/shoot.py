@@ -35,6 +35,7 @@ import paths  # noqa: E402
 from models import Difficulty, ErrorCategory, Note  # noqa: E402
 from services import Library  # noqa: E402
 from ui.main_window import MainWindow  # noqa: E402
+from ui.code_dialog import CodeDialog  # noqa: E402
 from ui.schedule_dialog import ScheduleDialog  # noqa: E402
 from ui.theme import apply_theme  # noqa: E402
 
@@ -43,8 +44,11 @@ SIZES = ((1200, 800), (900, 680), (1360, 900))
 FIXED_DAY = date(2026, 10, 13)
 
 
-def seed(library: Library, day: date) -> None:
-    """造一批有代表性的样例数据：已掌握 / 待复习 / 只填了标题各一种。"""
+def seed(library: Library, day: date):
+    """造一批有代表性的样例数据：已掌握 / 待复习 / 只填了标题各一种。
+
+    返回第一条（它带完整的 AC 代码），供截图工具展示代码高亮。
+    """
     prefix = library.create(
         "P1001 前缀和与差分",
         link="https://oj.example.com/p/1001",
@@ -121,6 +125,7 @@ def seed(library: Library, day: date) -> None:
         error_category=ErrorCategory.SYNTAX_BUG,
     )
     library.create("快速新建的一条（只填了标题）")
+    return prefix
 
 
 def main() -> int:
@@ -137,7 +142,7 @@ def main() -> int:
 
     data_dir = Path(tempfile.mkdtemp(prefix="anh-shot-")) / "data"
     library = Library(paths.ensure_layout(data_dir), today_fn=lambda: FIXED_DAY)
-    seed(library, FIXED_DAY)
+    entry = seed(library, FIXED_DAY)
 
     window = MainWindow(library)
     window.show()
@@ -162,6 +167,17 @@ def main() -> int:
     saved.append(target)
     print(f"saved {target}")
     dialog.close()
+
+    # 代码「放大」对话框（同时检验大窗口里的语法高亮）
+    code_dialog = CodeDialog(library.read_note(entry.id).ac_code, "AC 代码（C++）", parent=window)
+    code_dialog.resize(1000, 700)
+    code_dialog.show()
+    app.processEvents()
+    target = out_dir / "code-dialog.png"
+    code_dialog.grab().save(str(target))
+    saved.append(target)
+    print(f"saved {target}")
+    code_dialog.close()
 
     print(f"数据目录（临时）：{data_dir}")
     return 0 if saved else 1

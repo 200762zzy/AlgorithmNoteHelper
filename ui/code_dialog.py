@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 import ui.theme as theme
+from ui.highlighter import attach as attach_cpp_highlighter
 
 
 class CodeDialog(QDialog):
@@ -36,6 +37,7 @@ class CodeDialog(QDialog):
         # 代码不该折行：长行用横向滚动条看，折行反而更难读
         self.editor.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.editor.setTabChangesFocus(False)
+        attach_cpp_highlighter(self.editor)
         layout.addWidget(self.editor, 1)
 
         row = QHBoxLayout()
