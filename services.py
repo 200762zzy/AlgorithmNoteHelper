@@ -373,6 +373,15 @@ class Library:
 
     # -- 导入 / 恢复 -----------------------------------------------------
 
+    def preview_snapshot(self, snapshot_path: Path) -> tuple[list[MistakeEntry], list[str]]:
+        """读取快照但不写入任何东西，返回（条目, 与本地 id 冲突的列表）。
+
+        供界面在导入前做预览并让用户选冲突策略（见项目文档 2.1.4）。
+        """
+        entries, _notes = storage.read_snapshot(Path(snapshot_path))
+        conflicts = [entry.id for entry in entries if self.find(entry.id) is not None]
+        return entries, conflicts
+
     def import_snapshot(
         self, snapshot_path: Path, conflict: str = CONFLICT_SKIP
     ) -> ImportResult:

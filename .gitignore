@@ -11,3 +11,6 @@ data/
 build/
 dist/
 *.spec
+
+# 开发用截图（tools/shoot.py 的输出）
+.shots/
