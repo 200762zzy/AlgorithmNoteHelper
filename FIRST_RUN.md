@@ -1,9 +1,25 @@
 # 首次运行说明
 
-## 1. Windows 可能会拦你一下
+## 1. 先确认你拿到的是哪一种
 
-这个程序没有代码签名（个人项目），所以第一次双击 `AlgorithmNoteHelper.exe` 时，
-Windows 会弹出蓝色的 **「Microsoft Defender SmartScreen 已保护你的电脑」**。
+这个项目提供**两种分发形式，功能完全一样**，区别只在启动方式和 Windows 的反应：
+
+| 你看到的东西 | 怎么启动 | Windows 会不会提示 |
+| :-- | :-- | :-- |
+| **`run.bat`** 和一个 `runtime\` 文件夹 | **双击 `run.bat`** | **不会提示** |
+| **`AlgorithmNoteHelper.exe`** | 双击这个 exe | 会弹一次蓝色的「已保护你的电脑」（见下） |
+
+两种都可以放心用。拿到哪一种取决于分享的人给你的是哪个压缩包。
+
+### 如果你用的是 `run.bat`
+
+会先闪一下黑色命令行窗口（那是启动器，不是警告），然后主窗口就出来了。**不会**有蓝色提示——
+因为它是借 Python 官方（Python Software Foundation）**已签名**的程序来运行的，
+Windows 认识那个签名。
+
+### 如果你用的是 `AlgorithmNoteHelper.exe`
+
+第一次双击时会出现蓝色的 **「Microsoft Defender SmartScreen 已保护你的电脑」**。
 
 **这不是病毒警告。** SmartScreen 只看两件事：这个 exe 有没有代码签名、下载量多不多；
 它不做病毒扫描。所以这句话的实际含义是"我不认识这个发布者"，而不是"这个文件有问题"。
@@ -13,14 +29,16 @@ Windows 会弹出蓝色的 **「Microsoft Defender SmartScreen 已保护你的�
 1. 点提示框里的 **「更多信息」**；
 2. 再点出现的 **「仍要运行」**。
 
-同一路径下的同一个文件只会问这一次。
-
 如果被 Windows Defender 直接隔离了，到「病毒和威胁防护 → 保护历史记录」里选择**还原**即可。
+
+> ⚠️ **注意：这种提示在每一次新版本上都会再出现一次。** 未签名的文件无法累积信誉，
+> 每个版本都要从零开始 —— 所以不是"点过一次就再也不问了"。想彻底没有提示，
+> 请用 `run.bat` 那种形式。
 
 ## 2. 数据放在哪
 
-**程序目录下的 `data/`**，也就是 exe 旁边。所以这个文件夹是"解压即用、数据跟着走"的便携版：
-整个文件夹拷到 U 盘或另一台电脑，错题一起跟过去。
+**程序文件夹里的 `data/`**。所以整个文件夹是"解压即用、数据跟着走"的便携版：
+拷到 U 盘或另一台电脑，错题一起跟过去。
 
 如果程序被放在只读位置（例如 `C:\Program Files\`），保存会失败，程序会自动把数据改放到
 `%APPDATA%\AlgorithmNoteHelper\`，并在窗口底部状态栏显示实际位置。
@@ -41,23 +59,27 @@ Windows 会弹出蓝色的 **「Microsoft Defender SmartScreen 已保护你的�
 
 「收为副本」适合把同学的题解收进来时两边都保留 —— 它会为新条目重新生成 id，不会覆盖你的记录。
 
-## 5. 卸载
+## 5. 出问题时的自检
+
+自检**不会打开界面**，结果同时写进 `data/self-check.log`，可以直接把那个文件发回给作者。
+
+- 用 `run.bat` 那种形式：双击 **`self-check.bat`**（它会把结果留在屏幕上）。
+- 用 exe 那种形式：在文件夹里按住 Shift 右键 → 「在终端中打开」，然后运行
+
+```
+AlgorithmNoteHelper.exe --self-check
+```
+
+## 6. 卸载
 
 直接删掉整个程序文件夹（如果数据在 `%APPDATA%\AlgorithmNoteHelper\`，那个也删掉）。
 不写注册表、不装服务、不联网。
 
-## 6. 如果不想用 exe
+## 7. 如果不想用打包版
 
 装好 Python 3.10+ 之后：
 
 ```
 pip install -r requirements.txt
 python main.py
-```
-
-遇到问题可以先跑一次自检，它不会打开界面；结果也会同时写进 `data/self-check.log`，
-可以直接把那个文件发回给作者：
-
-```
-AlgorithmNoteHelper.exe --self-check
 ```

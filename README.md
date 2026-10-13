@@ -64,14 +64,28 @@ data/
 
 ## 打包
 
-在 PowerShell 里运行（PowerShell 7 用 `pwsh`，Windows PowerShell 用 `powershell`）：
+两种分发形式，功能完全相同，按"要不要 SmartScreen 提示"选。在 PowerShell 里运行
+（PowerShell 7 用 `pwsh`，Windows PowerShell 用 `powershell`，后者若被执行策略拦住就加
+`-ExecutionPolicy Bypass`）：
+
+| 脚本 | 产物 | 体积 | 用户双击 | SmartScreen |
+| :-- | :-- | :-- | :-- | :-- |
+| `tools/build-portable.ps1` | `dist-portable/AlgorithmNoteHelper/` | **139 MB** | `run.bat` | **不提示** |
+| `tools/build.ps1` | `dist/AlgorithmNoteHelper/` | **118 MB** | `AlgorithmNoteHelper.exe` | 每个新版本提示一次 |
 
 ```
-powershell -File tools/build.ps1
+powershell -ExecutionPolicy Bypass -File tools/build-portable.ps1
+powershell -ExecutionPolicy Bypass -File tools/build.ps1
 ```
 
-产物在 `dist/AlgorithmNoteHelper/`，整个目录拷给别人即可运行；脚本会把 `README.md` 与
-`FIRST_RUN.md` 一并复制进去，并在结尾跑一次分发件自检、报告最终体积。
+**便携版为什么没有提示：** 它借 Python 官方（Python Software Foundation）**已签名**的
+`pythonw.exe` 来运行我们的代码，所以被执行的程序本身是受信任的。买代码签名证书做不到这一点
+（EV 证书 2024 年起已不再即时豁免，未签名/已签名的文件都要从零累积信誉）。完整实测见
+`1 项目概述.md` 第 10 节。**它还比较新，`.bat` 在少数受管控的机器上可能被策略禁掉** ——
+所以 PyInstaller 那条路保留为后备。
+
+两个脚本都会把 `README.md` 与 `FIRST_RUN.md` 复制进产物目录，并在结尾用两项非交互自检
+（数据层 + Qt 平台插件与界面层）验证产物真的能跑，再报告最终体积。
 用 onedir 而不是 onefile：onefile 每次启动都要把自己解压到临时目录，启动明显更慢。
 
 ## 开发
@@ -179,10 +193,13 @@ Obsidian + Dataview"：固定字段带来的低录入成本，加上单文件互
 - 快速新建是**应用内**快捷键，不是系统级全局热键
 - 不支持把外部编辑过的 md 回读进应用（见上面的"单一写入者"说明）
 - 数据目录位置由程序自动决定，界面里不能改（可用 `ANH_DATA_DIR` 覆盖）
-- **打包体积 119.6 MB**。模块级 `--exclude-module` 只排掉 Python 侧的模块，**排不掉底层的 Qt DLL**：
-  `Qt6Quick.dll`、`Qt6Qml.dll`、`libcrypto-3*.dll`、`opengl32sw.dll` 仍会被 PySide6 的 hook 收进包里，
-  合计约 35 MB。继续瘦身要在 spec 里过滤 binaries，那属于手工删 DLL，而非交互自检无法覆盖
-  「文件对话框、样式」等全部运行时路径，所以本期刻意没做
+- **打包体积**：PyInstaller 版 118 MB、便携版 139 MB（压缩后约 47 / 50 MB）。前者的
+  `--exclude-module` 只排 Python 侧模块，**排不掉底层的 Qt DLL**（`Qt6Quick`、`Qt6Qml`、
+  `libcrypto`、`opengl32sw` 共约 35 MB 仍被 hook 收进包里）；便携版则按已验证的清单复制 Qt 文件，
+  但清单之外一律不删（Qt 自带翻译文件是下一个候选，同样未经验证）
+- PyInstaller 版未做代码签名，所以**每个新版本**都会触发一次 SmartScreen 提醒 ——
+  未签名文件无法累积信誉；想要无提示请用便携版，见「打包」与 `1 项目概述.md` 第 10 节
+- 便携版依赖 `.bat` 启动器，在少数受管控的机器上可能被执行策略禁掉
 
 ## 目录结构
 

@@ -25,7 +25,7 @@ from paths import DataLayout
 
 SCHEMA_VERSION = 1
 SNAPSHOT_KIND = "AlgorithmNoteHelper-snapshot"
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.1.3"
 
 # 自动备份各保留的份数。用户手动导出的 snapshot-* **不参与轮转**，不会被自动删除。
 BACKUP_KEEP = 10
