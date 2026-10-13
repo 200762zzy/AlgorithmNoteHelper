@@ -203,3 +203,50 @@ def test_single_instance_lock_refuses_a_second_holder(layout):
     first.unlock()
     assert second.tryLock(200) is True
     second.unlock()
+
+
+def test_self_check_runs_without_opening_the_window(monkeypatch, tmp_path, capsys):
+    """`--self-check` 是验证打包后分发件的唯一非交互手段。
+
+    顺带守住一条测试纪律：这里用 ANH_DATA_DIR 把数据目录指到临时目录，
+    测试**绝不能**碰真实的数据目录。
+    """
+    import main
+
+    monkeypatch.setenv("ANH_DATA_DIR", str(tmp_path / "data"))
+    assert main.main(["--self-check"]) == 0
+
+    out = capsys.readouterr().out
+    assert "自检通过" in out
+    assert "错题条数：0" in out
+
+    # windowed 的 exe 没有控制台，结果必须同时落盘
+    log = tmp_path / "data" / "self-check.log"
+    assert log.exists()
+    assert "自检通过" in log.read_text(encoding="utf-8")
+
+
+def test_version_flag(capsys):
+    import main
+    from storage import APP_VERSION
+
+    assert main.main(["--version"]) == 0
+    assert APP_VERSION in capsys.readouterr().out
+
+
+def test_gui_self_check_constructs_the_window(monkeypatch, tmp_path, qapp):
+    """界面自检要能证明「Qt 平台插件 + 整个界面层」在打包环境下也能加载。
+
+    这是 `--self-check` 覆盖不到的部分（它不创建 QApplication），
+    也是 PyInstaller 最常出问题的地方。
+    """
+    import main
+
+    monkeypatch.setenv("ANH_DATA_DIR", str(tmp_path / "data"))
+    assert main.main(["--self-check-gui"]) == 0
+
+    log = tmp_path / "data" / "gui-check.log"
+    assert log.exists()
+    text = log.read_text(encoding="utf-8")
+    assert "界面自检通过" in text
+    assert "列表条数：1" in text

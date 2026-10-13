@@ -111,18 +111,24 @@ QListWidget::item:selected {{
     color: #1c1f22;
 }}
 
+/* 标签列表：是「标签输入」的附属显示，不该和旁边的输入框抢视觉重量 */
+QListWidget#tagList {{ background: #fbfbfc; }}
+QListWidget#tagList::item {{ padding: 2px 6px; border-bottom: none; }}
+
 QGroupBox {{
     background: #ffffff;
     border: 1px solid #dcdfe3;
     border-radius: 6px;
-    margin-top: 14px;
-    padding: 14px 10px 10px 10px;
+    margin-top: 11px;
+    padding: 12px 10px 10px 10px;
     font-weight: 600;
 }}
 QGroupBox::title {{
     subcontrol-origin: margin;
-    left: 10px;
-    padding: 0 4px;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 5px;
+    background-color: #f2f3f5;   /* 与页面底色一致，标题才能"切断"卡片边框 */
     color: #4a5158;
 }}
 

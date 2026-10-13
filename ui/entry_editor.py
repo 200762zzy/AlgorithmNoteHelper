@@ -77,7 +77,8 @@ class TagEditor(QWidget):
         layout.addLayout(row)
 
         self.list = QListWidget()
-        self.list.setMaximumHeight(72)
+        self.list.setObjectName("tagList")
+        self.list.setMaximumHeight(56)
         self.list.setSelectionMode(QListWidget.ExtendedSelection)
         layout.addWidget(self.list)
 
@@ -191,25 +192,25 @@ class EntryEditor(QWidget):
         # 错误与订正
         body_box = QGroupBox("错误与订正")
         body = QVBoxLayout(body_box)
-        body.setSpacing(6)
+        body.setSpacing(5)
 
         self.wrong_idea_edit = self._add_text_block(
-            body, "我的错误思路", "当时是怎么想的、错在哪一步", mono=False, height=84
+            body, "我的错误思路", "当时是怎么想的、错在哪一步", mono=False, height=64
         )
         self.wrong_code_edit = self._add_text_block(
-            body, "错误代码（C++）", "// 错误代码", mono=True, height=132
+            body, "错误代码（C++）", "// 错误代码", mono=True, height=140
         )
         self.cause_detail_edit = self._add_text_block(
-            body, "错因详述", "如：边界错误 —— 数组开到 n 而非 n+1", mono=False, height=84
+            body, "错因详述", "如：边界错误 —— 数组开到 n 而非 n+1", mono=False, height=64
         )
         self.correct_idea_edit = self._add_text_block(
-            body, "正确思路", "关键观察、状态定义、转移方程等", mono=False, height=96
+            body, "正确思路", "关键观察、状态定义、转移方程等", mono=False, height=76
         )
         self.ac_code_edit = self._add_text_block(
-            body, "AC 代码（C++）", "// 正确代码", mono=True, height=132
+            body, "AC 代码（C++）", "// 正确代码", mono=True, height=140
         )
         self.summary_edit = self._add_text_block(
-            body, "复盘总结", "这类题的通用套路、下次如何避免", mono=False, height=84
+            body, "复盘总结", "这类题的通用套路、下次如何避免", mono=False, height=64
         )
         layout.addWidget(body_box)
 
@@ -251,7 +252,9 @@ class EntryEditor(QWidget):
         parent_layout.addWidget(QLabel(label))
         editor = QPlainTextEdit()
         editor.setPlaceholderText(placeholder)
-        editor.setMinimumHeight(height)
+        # 用定高而不是最小高度：QPlainTextEdit 默认纵向 Expanding，若只设最小高度，
+        # 剩余空间会被最上面那个文本框全部吸走，表单看起来头重脚轻。
+        editor.setFixedHeight(height)
         if mono:
             editor.setFont(theme.mono_font(10))
         parent_layout.addWidget(editor)
