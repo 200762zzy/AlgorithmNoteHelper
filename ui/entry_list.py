@@ -30,6 +30,7 @@ _STATUS_CHOICES = (
     (ALL, "全部状态"),
     (StatusFilter.UNREVIEWED.value, "未复习"),
     (StatusFilter.DUE.value, "待复习"),
+    (StatusFilter.DUE_TODAY.value, "今天该复习"),
     (StatusFilter.MASTERED.value, "已掌握"),
 )
 
@@ -70,8 +71,11 @@ class EntryListPanel(QWidget):
         self.status = QComboBox()
         for value, label in _STATUS_CHOICES:
             self.status.addItem(label, value)
-        self.due_button = QPushButton("待复习 (0)")
-        self.due_button.setToolTip("一键筛选出今天该复习的条目（每周复盘用）")
+        self.due_button = QPushButton("今天该复习 (0)")
+        self.due_button.setToolTip(
+            "只看今天到期、该复习的条目（每周复盘用）。"
+            "注意它比「待复习」状态更窄：刚复习完的条目状态仍是待复习，但今天不用再看"
+        )
         row_two.addWidget(self.status, 1)
         row_two.addWidget(self.due_button)
         layout.addLayout(row_two)
@@ -137,7 +141,7 @@ class EntryListPanel(QWidget):
         self.tag.blockSignals(False)
 
     def set_due_count(self, count: int) -> None:
-        self.due_button.setText(f"待复习 ({count})")
+        self.due_button.setText(f"今天该复习 ({count})")
 
     def select(self, entry_id: str) -> None:
         for row in range(self.list.count()):
@@ -170,14 +174,14 @@ class EntryListPanel(QWidget):
         self.selection_changed.emit(entry_id or "")
 
     def _on_due_clicked(self) -> None:
-        index = self.status.findData(StatusFilter.DUE.value)
+        index = self.status.findData(StatusFilter.DUE_TODAY.value)
         if index >= 0:
             self.status.setCurrentIndex(index)
         else:
             self.filters_changed.emit()
 
 
-def _item_text(entry, is_due: bool) -> str:
+def _item_text(entry, is_due_today: bool) -> str:
     meta = []
     if entry.tags:
         shown = "、".join(entry.tags[:3])
@@ -186,6 +190,23 @@ def _item_text(entry, is_due: bool) -> str:
         meta.append(shown)
     meta.append(entry.difficulty.zh)
     meta.append(entry.error_category.zh)
-    meta.append(entry.review_status.zh)
-    first_line = ("● " if is_due else "") + entry.title
+    meta.append(_schedule_text(entry, is_due_today))
+    first_line = ("● " if is_due_today else "") + entry.title
     return f"{first_line}\n{' · '.join(meta)}"
+
+
+def _schedule_text(entry, is_due_today: bool) -> str:
+    """把排期写进列表第二行。
+
+    这一行是修一个真实缺陷的产物：复习完的条目状态**仍是「待复习」**，但已经不在
+    「今天该复习」队列里了。不显示下次日期的话，用户只会看到它"消失了"。
+    """
+    if entry.review_status is ReviewStatus.MASTERED:
+        return f"已掌握 · {_short_date(entry.srs.next_review)}"
+    if is_due_today:
+        return "待复习 · 今天"
+    return f"待复习 · {_short_date(entry.srs.next_review)}"
+
+
+def _short_date(value) -> str:
+    return f"{value.month}-{value.day}"

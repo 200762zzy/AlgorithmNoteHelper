@@ -116,11 +116,14 @@ class Library:
         return entry
 
     def in_review_queue(self, entry: MistakeEntry, day: date | None = None) -> bool:
-        """是否应出现在「待复习」队列里。
+        """是否应出现在「今天该复习」队列里。
 
         - `due`：排期到期即入队；
         - `mastered`：**不是终态**，逾期超过宽限期后重新入队，避免 SM-2 最有价值
           的长间隔段（30 → 90 → 180 天）被截断。
+
+        注意这与「待复习」**状态**筛选是两回事：刚复习完的条目状态仍是 `due`，
+        但已经不在这个队列里（见 `StatusFilter` 的说明）。
         """
         target = self._day(day)
         if entry.review_status is ReviewStatus.MASTERED:
@@ -128,7 +131,7 @@ class Library:
         return srs_is_due(entry.srs, target)
 
     def due_queue(self, day: date | None = None) -> list[MistakeEntry]:
-        """待复习队列，按到期时间升序（每周复盘用）。"""
+        """「今天该复习」队列，按到期时间升序（每周复盘用）。"""
         result = [entry for entry in self._entries if self.in_review_queue(entry, day)]
         result.sort(key=lambda e: (e.srs.next_review, e.created_at, e.title))
         return result
@@ -164,6 +167,10 @@ class Library:
             if wanted_keyword and wanted_keyword not in self._haystack(entry):
                 continue
             result.append(entry)
+
+        if wanted_status is StatusFilter.DUE_TODAY:
+            # 越早到期越该先复习，排在最前面
+            result.sort(key=lambda e: (e.srs.next_review, e.created_at, e.title))
         return result
 
     def _match_status(
@@ -174,9 +181,14 @@ class Library:
         if status is StatusFilter.UNREVIEWED:
             # 派生视图：从未评分过
             return entry.last_review_time is None
-        if status is StatusFilter.DUE:
+        if status is StatusFilter.DUE_TODAY:
+            # 队列语义：今天到期或已逾期
             return self.in_review_queue(entry, day)
-        return entry.review_status is ReviewStatus.MASTERED
+        if status is StatusFilter.MASTERED:
+            return entry.review_status is ReviewStatus.MASTERED
+        # DUE：状态语义。刚复习完、下次排在未来的条目**也在这里** ——
+        # 否则用户会在每一个筛选口径下都找不到它。
+        return entry.review_status is ReviewStatus.DUE
 
     @staticmethod
     def _haystack(entry: MistakeEntry) -> str:

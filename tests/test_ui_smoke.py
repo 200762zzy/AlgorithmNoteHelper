@@ -18,6 +18,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 pytest.importorskip("PySide6.QtWidgets", reason="未安装 PySide6")
 
+from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from models import Difficulty, Note, StatusFilter  # noqa: E402
@@ -63,8 +64,8 @@ def test_window_loads_the_first_entry(window):
 
 
 def test_toolbar_reports_due_count(window):
-    # 两条新建的错题当天就都在待复习队列里
-    assert window.panel.due_button.text() == "待复习 (2)"
+    # 两条新建的错题当天就都在「今天该复习」队列里
+    assert window.panel.due_button.text() == "今天该复习 (2)"
     assert window.panel.count_label.text() == "共 2 条"
 
 
@@ -134,9 +135,47 @@ def test_filters_translate_to_library_keyword_arguments(window):
     assert [e.title for e in window.library.search(**filters)] == ["P1001 前缀和与差分"]
 
 
-def test_due_button_switches_to_the_due_filter(window):
+def test_due_button_selects_the_due_today_filter(window):
     window.panel.due_button.click()
-    assert window.panel.filters()["status"] is StatusFilter.DUE
+    assert window.panel.filters()["status"] is StatusFilter.DUE_TODAY
+
+
+def test_reviewed_entry_stays_visible_under_the_due_status_filter(window):
+    """回归（界面上报的真实缺陷）：复习完的条目不能从列表里"消失"。
+
+    曾经「待复习」筛选是队列语义，刚复习完的条目于是在每个筛选口径下都不显示，
+    用户以为记录丢了。
+    """
+    entry = window.library.entries[0]
+    window.library.review(entry.id, 3)  # 困难 → 下次排到明天
+
+    def rows(status):
+        window.panel.status.setCurrentIndex(window.panel.status.findData(status))
+        return window.panel.list.count()
+
+    assert rows(StatusFilter.ALL.value) == 2
+    assert rows(StatusFilter.DUE.value) == 2  # 状态口径：两条都还在复习轮次里
+    assert rows(StatusFilter.DUE_TODAY.value) == 1  # 队列口径：只剩今天到期的那条
+
+
+def test_list_second_line_shows_when_the_entry_comes_back(window):
+    """列表第二行要把排期写出来，否则用户看不出条目"去哪了"。"""
+    entry = window.library.entries[0]
+    window.library.review(entry.id, 3)
+    other = window.library.entries[1]
+    window._refresh()  # 直接改库之后必须刷新，真实路径上 _on_review 会做这件事
+
+    soon = entry.srs.next_review
+    assert f"待复习 · {soon.month}-{soon.day}" in _second_line(window, entry.id)
+    assert "待复习 · 今天" in _second_line(window, other.id)
+
+
+def _second_line(window, entry_id):
+    for row in range(window.panel.list.count()):
+        item = window.panel.list.item(row)
+        if item.data(Qt.UserRole) == entry_id:
+            return item.text()
+    raise AssertionError(f"列表里找不到 {entry_id}")
 
 
 # --- 对话框的纯逻辑 ---------------------------------------------------------

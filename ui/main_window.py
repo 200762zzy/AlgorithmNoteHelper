@@ -313,7 +313,8 @@ class MainWindow(QMainWindow):
         self._refresh(select_id=entry.id)
         self._status(
             f"已记录复习（{QUALITY_LABELS[quality]}）：间隔 {updated.srs.interval} 天，"
-            f"下次 {updated.srs.next_review}，状态 {updated.review_status.zh}"
+            f"下次 {updated.srs.next_review}。该条已移出「今天该复习」队列，"
+            f"状态仍是「{updated.review_status.zh}」。"
         )
 
     def _on_delete(self) -> None:

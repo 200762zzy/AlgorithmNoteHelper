@@ -134,6 +134,48 @@ def test_unreviewed_filter_is_derived_not_stored(library):
     assert library.search(status=StatusFilter.UNREVIEWED) == []
 
 
+# --- 「待复习」状态 vs「今天该复习」队列（回归：曾经的语义混用缺陷） ---------
+
+
+def test_reviewed_entry_is_still_findable_by_the_due_status_filter(library):
+    """回归：复习完的条目状态仍是 due，「待复习」筛选必须能找到它。
+
+    这里曾经把「待复习」筛选实现成"今天到期的队列"，于是刚复习完的条目在
+    **每一个**筛选口径下都找不到（只有「全部状态」看得到）——界面上看起来
+    像是记录被删了，而实际上它完好无损，只是排到了明天。
+    """
+    entry = library.create("刚复习完")
+    library.review(entry.id, 3)
+
+    assert entry.review_status is ReviewStatus.DUE
+    assert [e.id for e in library.search(status=StatusFilter.DUE)] == [entry.id]
+    # 它确实已经离开"今天该复习"的队列，但那是队列口径，不是状态口径
+    assert library.search(status=StatusFilter.DUE_TODAY) == []
+    assert library.search(status=StatusFilter.UNREVIEWED) == []
+    assert library.search(status=StatusFilter.MASTERED) == []
+
+
+def test_due_today_filter_is_narrower_than_the_due_status_filter(library):
+    today = library.create("今天到期")
+    later = library.create("明天到期")
+    library.review(later.id, 3)
+
+    assert {e.id for e in library.search(status=StatusFilter.DUE)} == {today.id, later.id}
+    assert {e.id for e in library.search(status=StatusFilter.DUE_TODAY)} == {today.id}
+    # 「今天该复习」必须与队列口径完全一致
+    assert {e.id for e in library.due_queue()} == {today.id}
+
+
+def test_due_today_filter_sorts_by_next_review(library, day):
+    """逾期越久越该先复习，排在最前面。"""
+    recent = library.create("刚到期")
+    stale = library.create("早该复习")
+    library.review(stale.id, 3, day - timedelta(days=5))  # next_review = day - 4
+
+    result = library.search(status=StatusFilter.DUE_TODAY, day=day)
+    assert [e.id for e in result] == [stale.id, recent.id]
+
+
 def test_filters_combine(library):
     target = library.create(
         "目标", tags=["DP"], difficulty=Difficulty.HARD, error_category=ErrorCategory.OVERFLOW

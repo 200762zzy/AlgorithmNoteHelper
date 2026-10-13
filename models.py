@@ -98,12 +98,20 @@ class ReviewStatus(str, Enum):
 class StatusFilter(str, Enum):
     """列表筛选口径（见项目文档 2.1.2）。
 
-    其中 UNREVIEWED 是派生视图，不落库。
+    `DUE` 与 `DUE_TODAY` 是**两件不同的事**，这里混淆过一次，所以写明：
+
+    - `DUE`：按**状态**筛选，`review_status == due`。刚复习完、下次排在几天后的条目
+      仍然属于这一档 —— 它还在复习轮次里，只是今天不用再看。
+    - `DUE_TODAY`：按**队列**筛选，即"今天到期、该复习的"。它比 `DUE` 窄。
+      曾经把 `DUE` 直接当成队列语义，结果刚复习完的条目在每一个筛选口径下都找不到，
+      界面上看起来像是数据丢了。
+    - `UNREVIEWED`：派生视图（`last_review_time is null`），不落库。
     """
 
     ALL = "all"
     UNREVIEWED = "unreviewed"
     DUE = "due"
+    DUE_TODAY = "due_today"
     MASTERED = "mastered"
 
 
